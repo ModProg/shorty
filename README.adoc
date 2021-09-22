@@ -1,0 +1,32 @@
+= Shorty - URL shortener
+:source-highlighter: rouge
+
+== Wordlists 
+
+The Corpora of the Universität Leipzig, licensed under https://creativecommons.org/licenses/by/4.0/[CC BY], are used for generating the wordlists. (https://web.archive.org/web/20210730003345/https://wortschatz.uni-leipzig.de/en/usage[Terms of Usage]) You can download the files here: https://wortschatz.uni-leipzig.de/en/download/English[Corpora].
+
+== API
+|===
+| Method | Path | Description | Body | Response
+
+| POST   
+| `/w`
+| Short a URL via wordlist 
+| 
+The URL to shorten
+| 
+The shortened URL
+
+| DELETE   
+a| `/w/<ident>`
+| Deletes a shortened URL
+| 
+|
+
+| GET
+a| `/w/<ident>`
+| Redirects to the "long" URL
+| 
+a| `302`
+
+|===
