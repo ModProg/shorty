@@ -38,7 +38,6 @@ async fn get(db: Redirects, ident: String) -> Redirect {
             )
         })
         .await
-        .ok()
         .unwrap();
     Redirect::temporary(target)
 }
@@ -47,14 +46,17 @@ async fn get(db: Redirects, ident: String) -> Redirect {
 async fn word_list_post(config: &State<Config>, db: Redirects, target: String) -> String {
     let length = config.worded_length;
     let ident = db
-        .run(move |conn| {
+        .run(move |conn| loop {
             let ident = gen_worded_ident(length);
-            conn.execute(
-                "INSERT INTO redirects (ident, target) VALUES (?1, ?2)",
-                params![ident, target],
-            )
-            .unwrap();
-            ident
+            if conn
+                .execute(
+                    "INSERT INTO redirects (ident, target) VALUES (?1, ?2)",
+                    params![ident, target],
+                )
+                .is_ok()
+            {
+                break ident;
+            }
         })
         .await;
 
@@ -65,14 +67,17 @@ async fn word_list_post(config: &State<Config>, db: Redirects, target: String) -
 async fn chared_post(config: &State<Config>, db: Redirects, target: String) -> String {
     let length = config.chared_length;
     let ident = db
-        .run(move |conn| {
+        .run(move |conn| loop {
             let ident = gen_chared_ident(length);
-            conn.execute(
-                "INSERT INTO redirects (ident, target) VALUES (?1, ?2)",
-                params![ident, target],
-            )
-            .unwrap();
-            ident
+            if conn
+                .execute(
+                    "INSERT INTO redirects (ident, target) VALUES (?1, ?2)",
+                    params![ident, target],
+                )
+                .is_ok()
+            {
+                break ident;
+            }
         })
         .await;
     format!("{}{}", config.base_url, ident)
