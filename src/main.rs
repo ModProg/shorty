@@ -8,6 +8,7 @@ use rocket::Build;
 use rocket::Rocket;
 use rocket::State;
 
+use rocket::response::status;
 use rocket_sync_db_pools::rusqlite::{self, params};
 
 #[macro_use]
@@ -27,19 +28,30 @@ struct UrlRedirect {
     target: String,
 }
 
+#[delete("/<ident>")]
+async fn delete(db: Redirects, ident: String) {
+    db.run(move |conn| conn.execute("DELETE FROM redirects WHERE ident = ?1", params![ident]))
+        .await
+        .expect("Delete cannot fail");
+}
+
 #[get("/<ident>")]
-async fn get(db: Redirects, ident: String) -> Redirect {
-    let target: String = db
+async fn get(db: Redirects, ident: String) -> Result<Redirect, status::NotFound<String>> {
+    match db
         .run(move |conn| {
-            conn.query_row(
+            conn.query_row::<String, _, _>(
                 "SELECT target FROM redirects WHERE ident = ?1",
                 params![ident],
                 |r| r.get(0),
             )
         })
         .await
-        .unwrap();
-    Redirect::temporary(target)
+    {
+        Ok(url) => Ok(Redirect::temporary(url)),
+        Err(_) => Err(status::NotFound(
+            "There is no shortened url to open here.".to_string(),
+        )),
+    }
 }
 
 #[post("/w", data = "<target>")]
@@ -146,5 +158,5 @@ fn rocket() -> _ {
             worded_length,
             base_url,
         })
-        .mount("/", routes![get, word_list_post, chared_post])
+        .mount("/", routes![get, delete, word_list_post, chared_post])
 }
