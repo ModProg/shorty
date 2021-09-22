@@ -1,4 +1,5 @@
 use rand::distributions::Alphanumeric;
+use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
 use rocket::fairing::AdHoc;
@@ -14,6 +15,8 @@ extern crate rocket;
 
 #[macro_use]
 extern crate rocket_sync_db_pools;
+
+mod wordlists;
 
 #[database("redirects")]
 struct Redirects(rusqlite::Connection);
@@ -43,36 +46,43 @@ async fn get(db: Redirects, ident: String) -> Redirect {
 #[post("/w", data = "<target>")]
 async fn word_list_post(config: &State<Config>, db: Redirects, target: String) -> String {
     let length = config.worded_length;
-    db.run(move |conn| {
-        let ident = gen_worded_ident(length);
-        conn.execute(
-            "INSERT INTO redirects (ident, target) VALUES (?1, ?2)",
-            params![ident, target],
-        )
-        .unwrap();
-        ident
-    })
-    .await
+    let ident = db
+        .run(move |conn| {
+            let ident = gen_worded_ident(length);
+            conn.execute(
+                "INSERT INTO redirects (ident, target) VALUES (?1, ?2)",
+                params![ident, target],
+            )
+            .unwrap();
+            ident
+        })
+        .await;
+
+    format!("{}{}", config.base_url, ident)
 }
 
 #[post("/c", data = "<target>")]
 async fn chared_post(config: &State<Config>, db: Redirects, target: String) -> String {
     let length = config.chared_length;
-    db.run(move |conn| {
-        let ident = gen_chared_ident(length);
-        conn.execute(
-            "INSERT INTO redirects (ident, target) VALUES (?1, ?2)",
-            params![ident, target],
-        )
-        .unwrap();
-        ident
-    })
-    .await
+    let ident = db
+        .run(move |conn| {
+            let ident = gen_chared_ident(length);
+            conn.execute(
+                "INSERT INTO redirects (ident, target) VALUES (?1, ?2)",
+                params![ident, target],
+            )
+            .unwrap();
+            ident
+        })
+        .await;
+    format!("{}{}", config.base_url, ident)
 }
 
 fn gen_worded_ident(length: usize) -> String {
-    // Fallback for now
-    gen_chared_ident(length)
+    wordlists::ENG
+        .choose_multiple(&mut rand::thread_rng(), length)
+        .map(|f| format!("{}{}", &f[0..1].to_uppercase(), &f[1..]))
+        .collect()
 }
 
 fn gen_chared_ident(length: usize) -> String {
@@ -106,6 +116,7 @@ async fn init_db(rocket: Rocket<Build>) -> Rocket<Build> {
 struct Config {
     chared_length: usize,
     worded_length: usize,
+    base_url: String,
 }
 
 #[launch]
@@ -113,11 +124,14 @@ fn rocket() -> _ {
     let chared_length = std::env::var("CHARED_LENGTH")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(8);
+        .unwrap_or(4);
     let worded_length = std::env::var("CHARED_LENGTH")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(4);
+        .unwrap_or(1);
+    let base_url = std::env::var("BASE_URL")
+        .map(|url| if url.ends_with('/') { url } else { url + "/" })
+        .unwrap_or_else(|_| "http://127.0.0.1:8000/".to_string());
 
     rocket::build()
         .attach(Redirects::fairing())
@@ -125,6 +139,7 @@ fn rocket() -> _ {
         .manage(Config {
             chared_length,
             worded_length,
+            base_url,
         })
         .mount("/", routes![get, word_list_post, chared_post])
 }
