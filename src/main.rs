@@ -142,7 +142,7 @@ fn rocket() -> _ {
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(4);
-    let worded_length = std::env::var("CHARED_LENGTH")
+    let worded_length = std::env::var("WORDED_LENGTH")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(1);
