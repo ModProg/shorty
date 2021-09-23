@@ -17,16 +17,25 @@ The URL to shorten
 | 
 The shortened URL
 
+| POST   
+| `/c`
+| Short a URL via random characters `[a-zA-Z0-9]` 
+| 
+The URL to shorten
+| 
+The shortened URL
+
 | DELETE   
-a| `/w/<ident>`
+a| `/<ident>`
 | Deletes a shortened URL
+Note that this is the same URL as the `GET`
 | 
 |
 
 | GET
-a| `/w/<ident>`
-| Redirects to the "long" URL
+a| `/<ident>`
+| Redirects to the matching `target` URL
 | 
-a| `302`
+a| `307`
 
 |===
