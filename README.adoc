@@ -39,3 +39,30 @@ a| `/<ident>`
 a| `307`
 
 |===
+
+== Examples
+
+You can run `shorty` with `docker` or `podman`:
+
+```sh
+podman run -p 8000:8000 ghcr.io/modprog/shorty
+```
+or
+```
+docker run -p 8000:8000 ghcr.io/modprog/shorty
+```
+
+To shorten a URL make a `POST` request:
+
+Using the wordlist:
+```sh
+curl -X POST http://localhost:8000/w -d https://togglebit.io/posts/terminal-game-jam/
+```
+
+Using random characters:
+
+```sh
+curl -X POST http://localhost:8000/c -d https://togglebit.io/posts/terminal-game-jam/
+```
+
+Afterwards just open the returned URL in a browser of your choice.
