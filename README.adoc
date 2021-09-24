@@ -40,6 +40,17 @@ a| `307`
 
 |===
 
+== Configuration
+
+You can configure `shorty` via environment variables. You can set those via the `--env` tag:
+
+|===
+| Name          | Default                  | Description
+| BASE_URL      | `http://127.0.0.1:8000/` | The URL returned when shortening urls
+| CHARED_LENGTH | `4`                      | The length of the random characters used for shorened URL's
+| WORDED_LENGTH | `4`                      | The length of the random characters used for shorened URL's
+|===
+
 == Examples
 
 You can run `shorty` with `docker` or `podman`:
@@ -48,8 +59,16 @@ You can run `shorty` with `docker` or `podman`:
 podman run -p 8000:8000 ghcr.io/modprog/shorty
 ```
 or
-```
+```sh
 docker run -p 8000:8000 ghcr.io/modprog/shorty
+```
+
+To set all configurable options:
+
+```sh
+podman run -p 8000:8000 \
+  --env WORDED_LENGTH=1 --env CHARED_LENGTH=4 --env BASE_URL=http://127.0.0.1:8000/ \
+  ghcr.io/modprog/shorty
 ```
 
 To shorten a URL make a `POST` request:
