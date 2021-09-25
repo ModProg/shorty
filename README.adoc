@@ -46,9 +46,10 @@ You can configure `shorty` via environment variables. You can set those via the 
 
 |===
 | Name          | Default                  | Description
-| BASE_URL      | `http://127.0.0.1:8000/` | The URL returned when shortening urls
-| CHARED_LENGTH | `4`                      | The length of the random characters used for shorened URL's
-| WORDED_LENGTH | `4`                      | The length of the random characters used for shorened URL's
+| BASE_URL      | `http://127.0.0.1:8000/` | The URL returned when shortening urls.
+| CHARED_LENGTH | `4`                      | The length of the random characters used for shortened URL's.
+| WORDED_LENGTH | `1`                      | The length of the random words used for shortened URL's.
+| PASSWORD      | *NOT-SET*                | If set `POST` and `DELETE` requests are only authenticated with the cookie `PASSWORD` set to the correct password.
 |===
 
 == Examples

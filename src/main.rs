@@ -3,10 +3,10 @@ use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
 use rocket::fairing::AdHoc;
+use rocket::http::CookieJar;
+use rocket::request::{FromRequest, Outcome};
 use rocket::response::Redirect;
-use rocket::Build;
-use rocket::Rocket;
-use rocket::State;
+use rocket::{Build, Rocket, State};
 
 use rocket::response::status;
 use rocket_sync_db_pools::rusqlite::{self, params};
@@ -22,14 +22,38 @@ mod wordlists;
 #[database("redirects")]
 struct Redirects(rusqlite::Connection);
 
-#[derive(Debug, Clone)]
-struct UrlRedirect {
-    ident: String,
-    target: String,
+struct Authenticated;
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for Authenticated {
+    type Error = &'static str;
+
+    async fn from_request(
+        request: &'r rocket::Request<'_>,
+    ) -> rocket::request::Outcome<Self, Self::Error> {
+        let config: &State<Config> = request.guard().await.unwrap();
+        let jar: &CookieJar<'_> = request.guard().await.unwrap();
+        match (
+            config.password.as_deref(),
+            jar.get("PASSWORD").map(|c| c.value()),
+        ) {
+            (config_password, cookie_password) if config_password == cookie_password => {
+                Outcome::Success(Self)
+            }
+            (None, _) => Outcome::Failure((
+                rocket::http::Status::Unauthorized,
+                "The cookie `PASSWORD` was not set, but a password is required.",
+            )),
+            _ => Outcome::Failure((
+                rocket::http::Status::Unauthorized,
+                "The wrong password was provided through the cookie `PASSWORD`",
+            )),
+        }
+    }
 }
 
 #[delete("/<ident>")]
-async fn delete(db: Redirects, ident: String) {
+async fn delete(_a: Authenticated, db: Redirects, ident: String) {
     db.run(move |conn| conn.execute("DELETE FROM redirects WHERE ident = ?1", params![ident]))
         .await
         .expect("Delete cannot fail");
@@ -55,7 +79,12 @@ async fn get(db: Redirects, ident: String) -> Result<Redirect, status::NotFound<
 }
 
 #[post("/w", data = "<target>")]
-async fn word_list_post(config: &State<Config>, db: Redirects, target: String) -> String {
+async fn word_list_post(
+    _a: Authenticated,
+    config: &State<Config>,
+    db: Redirects,
+    target: String,
+) -> String {
     let length = config.worded_length;
     let ident = db
         .run(move |conn| loop {
@@ -76,7 +105,12 @@ async fn word_list_post(config: &State<Config>, db: Redirects, target: String) -
 }
 
 #[post("/c", data = "<target>")]
-async fn chared_post(config: &State<Config>, db: Redirects, target: String) -> String {
+async fn chared_post(
+    _a: Authenticated,
+    config: &State<Config>,
+    db: Redirects,
+    target: String,
+) -> String {
     let length = config.chared_length;
     let ident = db
         .run(move |conn| loop {
@@ -134,6 +168,7 @@ struct Config {
     chared_length: usize,
     worded_length: usize,
     base_url: String,
+    password: Option<String>,
 }
 
 #[launch]
@@ -149,6 +184,7 @@ fn rocket() -> _ {
     let base_url = std::env::var("BASE_URL")
         .map(|url| if url.ends_with('/') { url } else { url + "/" })
         .unwrap_or_else(|_| "http://127.0.0.1:8000/".to_string());
+    let password = std::env::var("PASSWORD").ok();
 
     rocket::build()
         .attach(Redirects::fairing())
@@ -157,6 +193,7 @@ fn rocket() -> _ {
             chared_length,
             worded_length,
             base_url,
+            password,
         })
         .mount("/", routes![get, delete, word_list_post, chared_post])
 }
